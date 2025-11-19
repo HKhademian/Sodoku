@@ -72,13 +72,12 @@ export function PerspectiveCropper({ imageSrc, onPointsChange }: PerspectiveCrop
         const clampedX = Math.max(0, Math.min(imgDimensions.width, x));
         const clampedY = Math.max(0, Math.min(imgDimensions.height, y));
 
-        setPoints(prev => {
-            const newPoints = [...prev];
-            newPoints[draggingIndex] = { x: clampedX, y: clampedY };
-            onPointsChange(newPoints);
-            return newPoints;
-        });
-    }, [draggingIndex, imgDimensions, onPointsChange]);
+        const newPoints = [...points];
+        newPoints[draggingIndex] = { x: clampedX, y: clampedY };
+
+        setPoints(newPoints);
+        onPointsChange(newPoints);
+    }, [draggingIndex, imgDimensions, onPointsChange, points]);
 
     const handleMouseUp = useCallback(() => {
         setDraggingIndex(null);
