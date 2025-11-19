@@ -9,7 +9,15 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { Camera, Upload, Loader2, Check, RotateCcw, Grid3X3 } from "lucide-react";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Difficulty } from "@/lib/sudoku";
+import { Camera, Upload, Loader2, Check, RotateCcw, Grid3X3, Menu, Play } from "lucide-react";
 import { processSudokuImage } from "@/lib/ocr";
 import { getPerspectiveCroppedImg } from "@/lib/perspective";
 import { PerspectiveCropper } from "@/components/PerspectiveCropper";
@@ -19,9 +27,12 @@ import { toast } from "sonner";
 
 interface ImageImportProps {
     onImport: (grid: (number | null)[]) => void;
+    onNewGame: () => void;
+    difficulty: Difficulty;
+    onDifficultyChange: (value: Difficulty) => void;
 }
 
-export function ImageImport({ onImport }: ImageImportProps) {
+export function ImageImport({ onImport, onNewGame, difficulty, onDifficultyChange }: ImageImportProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [mode, setMode] = useState<'menu' | 'camera' | 'crop' | 'preview' | 'manual'>('menu');
@@ -153,14 +164,14 @@ export function ImageImport({ onImport }: ImageImportProps) {
             if (!open) resetState();
         }}>
             <DialogTrigger asChild>
-                <Button variant="outline" className="w-full h-12 gap-2">
-                    <Camera className="w-4 h-4" />
-                    Import Puzzle
+                <Button variant="ghost" size="icon" className="w-10 h-10">
+                    <Menu className="w-6 h-6" />
+                    <span className="sr-only">Game Menu</span>
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md h-[85vh] flex flex-col">
                 <DialogHeader>
-                    <DialogTitle>Import Sudoku</DialogTitle>
+                    <DialogTitle>Game Menu</DialogTitle>
                 </DialogHeader>
 
                 <div className="flex-1 relative min-h-0 flex flex-col overflow-y-auto">
@@ -170,26 +181,50 @@ export function ImageImport({ onImport }: ImageImportProps) {
                             <p>Analyzing image...</p>
                         </div>
                     ) : mode === 'menu' ? (
-                        <div className="grid grid-cols-2 gap-4 py-4 h-full content-center">
-                            <Button variant="outline" className="h-32 flex-col gap-4" onClick={() => setMode('camera')}>
-                                <Camera className="w-12 h-12" />
-                                Take Photo
-                            </Button>
-                            <Button variant="outline" className="h-32 flex-col gap-4" onClick={() => fileInputRef.current?.click()}>
-                                <Upload className="w-12 h-12" />
-                                Upload File
-                            </Button>
-                            <Button variant="outline" className="h-32 flex-col gap-4 col-span-2" onClick={() => setMode('manual')}>
-                                <Grid3X3 className="w-12 h-12" />
-                                Manual Entry
-                            </Button>
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                className="hidden"
-                                accept="image/*"
-                                onChange={handleFileChange}
-                            />
+                        <div className="flex flex-col gap-4 py-4 h-full">
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm font-medium">Difficulty</label>
+                                <Select value={difficulty} onValueChange={(val) => onDifficultyChange(val as Difficulty)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Difficulty" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="easy">Easy</SelectItem>
+                                        <SelectItem value="medium">Medium</SelectItem>
+                                        <SelectItem value="hard">Hard</SelectItem>
+                                        <SelectItem value="insane">Insane</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 flex-1 content-start">
+                                <Button variant="outline" className="h-32 flex-col gap-4 col-span-2" onClick={() => {
+                                    onNewGame();
+                                    setIsOpen(false);
+                                }}>
+                                    <Play className="w-12 h-12" />
+                                    New Game
+                                </Button>
+                                <Button variant="outline" className="h-32 flex-col gap-4" onClick={() => setMode('camera')}>
+                                    <Camera className="w-12 h-12" />
+                                    Take Photo
+                                </Button>
+                                <Button variant="outline" className="h-32 flex-col gap-4" onClick={() => fileInputRef.current?.click()}>
+                                    <Upload className="w-12 h-12" />
+                                    Upload File
+                                </Button>
+                                <Button variant="outline" className="h-32 flex-col gap-4 col-span-2" onClick={() => setMode('manual')}>
+                                    <Grid3X3 className="w-12 h-12" />
+                                    Manual Entry
+                                </Button>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                />
+                            </div>
                         </div>
                     ) : mode === 'camera' ? (
                         <div className="flex flex-col h-full gap-4">

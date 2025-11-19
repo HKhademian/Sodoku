@@ -216,6 +216,12 @@ export default function Home() {
         <h1 className="text-4xl font-bold tracking-tight">Sudoku</h1>
         <div className="flex items-center gap-4">
           <div className="text-xl font-mono font-medium">{formatTime(timer)}</div>
+          <ImageImport
+            onImport={handleImport}
+            onNewGame={() => startNewGame(difficulty)}
+            difficulty={difficulty}
+            onDifficultyChange={startNewGame}
+          />
           <ThemeToggle />
         </div>
       </div>
@@ -234,15 +240,10 @@ export default function Home() {
 
         <div className="flex flex-col gap-8 w-full max-w-md">
           <Controls
-            difficulty={difficulty}
-            onDifficultyChange={startNewGame}
-            onNewGame={() => startNewGame(difficulty)}
             onSolve={handleSolve}
             onHint={handleHint}
             onReset={resetGame}
           />
-
-          <ImageImport onImport={handleImport} />
 
           <Leaderboard />
         </div>
