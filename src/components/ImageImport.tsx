@@ -8,10 +8,12 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { Camera, Upload, Loader2, Check, RotateCcw } from "lucide-react";
+import { Camera, Upload, Loader2, Check, RotateCcw, Grid3X3 } from "lucide-react";
 import { processSudokuImage } from "@/lib/ocr";
 import { getPerspectiveCroppedImg } from "@/lib/perspective";
 import { PerspectiveCropper } from "@/components/PerspectiveCropper";
+import { SudokuGrid } from "@/components/SudokuGrid";
+import { NumberPad } from "@/components/NumberPad";
 import { toast } from "sonner";
 
 interface ImageImportProps {
@@ -21,10 +23,14 @@ interface ImageImportProps {
 export function ImageImport({ onImport }: ImageImportProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [mode, setMode] = useState<'menu' | 'camera' | 'crop' | 'preview'>('menu');
+    const [mode, setMode] = useState<'menu' | 'camera' | 'crop' | 'preview' | 'manual'>('menu');
     const [imageSrc, setImageSrc] = useState<string | null>(null);
     const [previewSrc, setPreviewSrc] = useState<string | null>(null);
     const [points, setPoints] = useState<any[]>([]);
+
+    // Manual mode state
+    const [manualGrid, setManualGrid] = useState<(number | null)[]>(Array(81).fill(null));
+    const [selectedManualIndex, setSelectedManualIndex] = useState<number | null>(null);
 
     const webcamRef = useRef<Webcam>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -86,11 +92,34 @@ export function ImageImport({ onImport }: ImageImportProps) {
         }
     };
 
+    const handleManualInput = (num: number) => {
+        if (selectedManualIndex === null) return;
+        const newGrid = [...manualGrid];
+        newGrid[selectedManualIndex] = num;
+        setManualGrid(newGrid);
+    };
+
+    const handleManualDelete = () => {
+        if (selectedManualIndex === null) return;
+        const newGrid = [...manualGrid];
+        newGrid[selectedManualIndex] = null;
+        setManualGrid(newGrid);
+    };
+
+    const handleManualImport = () => {
+        onImport(manualGrid);
+        setIsOpen(false);
+        resetState();
+        toast.success("Puzzle imported manually!");
+    };
+
     const resetState = () => {
         setMode('menu');
         setImageSrc(null);
         setPreviewSrc(null);
         setPoints([]);
+        setManualGrid(Array(81).fill(null));
+        setSelectedManualIndex(null);
     };
 
     return (
@@ -104,12 +133,12 @@ export function ImageImport({ onImport }: ImageImportProps) {
                     Import Puzzle
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md h-[80vh] flex flex-col">
+            <DialogContent className="sm:max-w-md h-[85vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Import Sudoku</DialogTitle>
                 </DialogHeader>
 
-                <div className="flex-1 relative min-h-0 flex flex-col">
+                <div className="flex-1 relative min-h-0 flex flex-col overflow-y-auto">
                     {isProcessing ? (
                         <div className="flex flex-col items-center justify-center h-full gap-4">
                             <Loader2 className="w-8 h-8 animate-spin" />
@@ -124,6 +153,10 @@ export function ImageImport({ onImport }: ImageImportProps) {
                             <Button variant="outline" className="h-32 flex-col gap-4" onClick={() => fileInputRef.current?.click()}>
                                 <Upload className="w-12 h-12" />
                                 Upload File
+                            </Button>
+                            <Button variant="outline" className="h-32 flex-col gap-4 col-span-2" onClick={() => setMode('manual')}>
+                                <Grid3X3 className="w-12 h-12" />
+                                Manual Entry
                             </Button>
                             <input
                                 type="file"
@@ -185,6 +218,29 @@ export function ImageImport({ onImport }: ImageImportProps) {
                                     Back
                                 </Button>
                                 <Button className="flex-1" onClick={handleImport}>
+                                    <Check className="w-4 h-4 mr-2" />
+                                    Import
+                                </Button>
+                            </div>
+                        </div>
+                    ) : mode === 'manual' ? (
+                        <div className="flex flex-col items-center gap-4 pb-4">
+                            <SudokuGrid
+                                puzzle={manualGrid}
+                                userGrid={manualGrid}
+                                initialGrid={Array(81).fill(null)}
+                                selectedIndex={selectedManualIndex}
+                                onCellClick={setSelectedManualIndex}
+                            />
+                            <NumberPad
+                                onNumberClick={handleManualInput}
+                                onDelete={handleManualDelete}
+                            />
+                            <div className="flex gap-2 w-full max-w-md">
+                                <Button variant="outline" className="flex-1" onClick={() => setMode('menu')}>
+                                    Back
+                                </Button>
+                                <Button className="flex-1" onClick={handleManualImport}>
                                     <Check className="w-4 h-4 mr-2" />
                                     Import
                                 </Button>
