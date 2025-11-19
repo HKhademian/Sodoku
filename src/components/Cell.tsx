@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 interface CellProps {
     value: number | null;
@@ -11,8 +12,11 @@ interface CellProps {
 
 export function Cell({ value, initial, isSelected, isRelated, isValid, onClick }: CellProps) {
     return (
-        <div
+        <motion.div
             onClick={onClick}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.1 }}
             className={cn(
                 "flex items-center justify-center w-full h-full text-xl font-medium cursor-pointer transition-colors duration-75 select-none border-[0.5px] border-border",
                 // Grid borders handled by parent or smart borders here? 
@@ -35,7 +39,16 @@ export function Cell({ value, initial, isSelected, isRelated, isValid, onClick }
                 !initial && "text-blue-600 dark:text-blue-400"
             )}
         >
-            {value}
-        </div>
+            {value && (
+                <motion.span
+                    key={value}
+                    initial={{ scale: 0.5 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                    {value}
+                </motion.span>
+            )}
+        </motion.div>
     );
 }
