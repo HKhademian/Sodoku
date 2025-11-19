@@ -11,7 +11,7 @@ import { saveGame, loadGame, clearGame, saveScore } from "@/lib/storage";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Camera } from "lucide-react";
-// import { ImageImport } from "@/components/ImageImport"; // To be implemented
+import { ImageImport } from "@/components/ImageImport";
 
 export default function Home() {
   const [puzzle, setPuzzle] = useState<(number | null)[]>(Array(81).fill(null));
@@ -77,6 +77,24 @@ export default function Home() {
     setStatus('playing');
     setSelectedIndex(null);
     clearGame();
+  }, []);
+
+  const handleImport = useCallback((importedGrid: (number | null)[]) => {
+    const solved = solveSudoku(importedGrid);
+    if (!solved) {
+      toast.error("Imported puzzle seems invalid or unsolvable.");
+      return;
+    }
+
+    setPuzzle(importedGrid);
+    setInitialGrid(importedGrid);
+    setUserGrid(importedGrid);
+    setSolution(solved);
+    setTimer(0);
+    setStatus('playing');
+    setSelectedIndex(null);
+    clearGame();
+    toast.success("Puzzle imported!");
   }, []);
 
   const handleCellClick = (index: number) => {
@@ -214,10 +232,7 @@ export default function Home() {
             onReset={() => startNewGame(difficulty)}
           />
 
-          <Button variant="outline" className="w-full h-12 gap-2" disabled>
-            <Camera className="w-4 h-4" />
-            Import from Camera (Coming Soon)
-          </Button>
+          <ImageImport onImport={handleImport} />
 
           <Leaderboard />
         </div>
