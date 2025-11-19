@@ -29,6 +29,7 @@ export function ImageImport({ onImport }: ImageImportProps) {
     const [previewSrc, setPreviewSrc] = useState<string | null>(null);
     const [points, setPoints] = useState<any[]>([]);
     const [previewGrid, setPreviewGrid] = useState<(number | null)[]>(Array(81).fill(null));
+    const [selectedPreviewIndex, setSelectedPreviewIndex] = useState<number | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
     // Manual mode state
@@ -99,6 +100,20 @@ export function ImageImport({ onImport }: ImageImportProps) {
         toast.success("Sudoku imported successfully!");
     };
 
+    const handlePreviewInput = (num: number) => {
+        if (selectedPreviewIndex === null) return;
+        const newGrid = [...previewGrid];
+        newGrid[selectedPreviewIndex] = num;
+        setPreviewGrid(newGrid);
+    };
+
+    const handlePreviewDelete = () => {
+        if (selectedPreviewIndex === null) return;
+        const newGrid = [...previewGrid];
+        newGrid[selectedPreviewIndex] = null;
+        setPreviewGrid(newGrid);
+    };
+
     const handleManualInput = (num: number) => {
         if (selectedManualIndex === null) return;
         const newGrid = [...manualGrid];
@@ -128,6 +143,7 @@ export function ImageImport({ onImport }: ImageImportProps) {
         setManualGrid(Array(81).fill(null));
         setSelectedManualIndex(null);
         setPreviewGrid(Array(81).fill(null));
+        setSelectedPreviewIndex(null);
         setIsAnalyzing(false);
     };
 
@@ -223,19 +239,23 @@ export function ImageImport({ onImport }: ImageImportProps) {
                                         alt="Preview"
                                         className="w-full h-full object-contain"
                                     />
-                                    <div className="absolute inset-0 grid grid-cols-9 grid-rows-[repeat(9,minmax(0,1fr))] pointer-events-none">
+                                    <div className="absolute inset-0 grid grid-cols-9 grid-rows-[repeat(9,minmax(0,1fr))]">
                                         {Array.from({ length: 81 }).map((_, i) => {
                                             const row = Math.floor(i / 9);
                                             const col = i % 9;
                                             const value = previewGrid[i];
+                                            const isSelected = selectedPreviewIndex === i;
                                             return (
                                                 <div
                                                     key={i}
+                                                    onClick={() => setSelectedPreviewIndex(i)}
                                                     className={cn(
-                                                        "flex items-center justify-center text-2xl font-bold text-blue-600 drop-shadow-md",
+                                                        "flex items-center justify-center text-2xl font-bold drop-shadow-md cursor-pointer transition-colors",
                                                         "border-[0.5px] border-cyan-400/30",
                                                         (col + 1) % 3 === 0 && col !== 8 && "border-r-cyan-400/80 border-r-2",
-                                                        (row + 1) % 3 === 0 && row !== 8 && "border-b-cyan-400/80 border-b-2"
+                                                        (row + 1) % 3 === 0 && row !== 8 && "border-b-cyan-400/80 border-b-2",
+                                                        isSelected ? "bg-cyan-400/40 ring-2 ring-cyan-400 z-10" : "hover:bg-cyan-400/10",
+                                                        value ? "text-blue-600" : ""
                                                     )}
                                                 >
                                                     {value}
@@ -244,7 +264,7 @@ export function ImageImport({ onImport }: ImageImportProps) {
                                         })}
                                     </div>
                                     {isAnalyzing && (
-                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
                                             <div className="bg-background p-4 rounded-lg flex items-center gap-2">
                                                 <Loader2 className="w-6 h-6 animate-spin" />
                                                 <span>Scanning numbers...</span>
@@ -253,6 +273,10 @@ export function ImageImport({ onImport }: ImageImportProps) {
                                     )}
                                 </div>
                             </div>
+                            <NumberPad
+                                onNumberClick={handlePreviewInput}
+                                onDelete={handlePreviewDelete}
+                            />
                             <div className="flex gap-2 shrink-0">
                                 <Button variant="outline" className="flex-1" onClick={() => setMode('crop')}>
                                     Back
