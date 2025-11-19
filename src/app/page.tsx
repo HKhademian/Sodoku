@@ -1,65 +1,227 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { SudokuGrid } from "@/components/SudokuGrid";
+import { Controls } from "@/components/Controls";
+import { NumberPad } from "@/components/NumberPad";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Leaderboard } from "@/components/Leaderboard";
+import { generateSudoku, solveSudoku, isValidMove, Difficulty } from "@/lib/sudoku";
+import { saveGame, loadGame, clearGame, saveScore } from "@/lib/storage";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Camera } from "lucide-react";
+// import { ImageImport } from "@/components/ImageImport"; // To be implemented
 
 export default function Home() {
+  const [puzzle, setPuzzle] = useState<(number | null)[]>(Array(81).fill(null));
+  const [solution, setSolution] = useState<number[]>([]);
+  const [userGrid, setUserGrid] = useState<(number | null)[]>(Array(81).fill(null));
+  const [initialGrid, setInitialGrid] = useState<(number | null)[]>(Array(81).fill(null));
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [difficulty, setDifficulty] = useState<Difficulty>("medium");
+  const [timer, setTimer] = useState(0);
+  const [status, setStatus] = useState<'playing' | 'won'>('playing');
+  const [isClient, setIsClient] = useState(false);
+
+  // Load game on mount
+  useEffect(() => {
+    setIsClient(true);
+    const saved = loadGame();
+    if (saved && saved.status === 'playing') {
+      setPuzzle(saved.puzzle);
+      setSolution(saved.solution);
+      setUserGrid(saved.userGrid);
+      setInitialGrid(saved.puzzle); // Assuming puzzle in save is the initial state
+      setTimer(saved.timer);
+      setDifficulty(saved.difficulty as Difficulty);
+      setStatus(saved.status);
+      toast.success("Game loaded from save!");
+    } else {
+      startNewGame("medium");
+    }
+  }, []);
+
+  // Timer
+  useEffect(() => {
+    if (status !== 'playing') return;
+    const interval = setInterval(() => {
+      setTimer(t => t + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [status]);
+
+  // Auto-save
+  useEffect(() => {
+    if (status === 'playing' && isClient) {
+      saveGame({
+        puzzle: initialGrid,
+        solution,
+        userGrid,
+        history: [],
+        timer,
+        difficulty,
+        status
+      });
+    }
+  }, [userGrid, timer, status, initialGrid, solution, difficulty, isClient]);
+
+  const startNewGame = useCallback((diff: Difficulty) => {
+    const { puzzle: newPuzzle, solution: newSolution } = generateSudoku(diff);
+    setPuzzle(newPuzzle);
+    setSolution(newSolution);
+    setUserGrid([...newPuzzle]);
+    setInitialGrid([...newPuzzle]);
+    setDifficulty(diff);
+    setTimer(0);
+    setStatus('playing');
+    setSelectedIndex(null);
+    clearGame();
+  }, []);
+
+  const handleCellClick = (index: number) => {
+    setSelectedIndex(index);
+  };
+
+  const handleNumberInput = useCallback((num: number) => {
+    if (selectedIndex === null || status !== 'playing') return;
+
+    // Cannot edit initial cells
+    if (initialGrid[selectedIndex] !== null) return;
+
+    const newGrid = [...userGrid];
+    newGrid[selectedIndex] = num;
+    setUserGrid(newGrid);
+
+    // Check for win
+    if (newGrid.every((val, i) => val === solution[i])) {
+      setStatus('won');
+      toast.success(`Puzzle Solved! Time: ${formatTime(timer)}`);
+      saveScore({
+        name: "You",
+        score: timer,
+        difficulty,
+        date: new Date().toISOString()
+      });
+      clearGame();
+    } else if (newGrid.every(val => val !== null)) {
+      // Board full but not correct
+      // toast.error("Board full but incorrect!");
+    }
+  }, [selectedIndex, status, initialGrid, userGrid, solution, timer, difficulty]);
+
+  const handleDelete = useCallback(() => {
+    if (selectedIndex === null || status !== 'playing') return;
+    if (initialGrid[selectedIndex] !== null) return;
+
+    const newGrid = [...userGrid];
+    newGrid[selectedIndex] = null;
+    setUserGrid(newGrid);
+  }, [selectedIndex, status, initialGrid, userGrid]);
+
+  // Keyboard support
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (status !== 'playing') return;
+
+      if (e.key >= '1' && e.key <= '9') {
+        handleNumberInput(parseInt(e.key));
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        handleDelete();
+      } else if (e.key.startsWith('Arrow')) {
+        // Navigation
+        if (selectedIndex === null) {
+          setSelectedIndex(0);
+          return;
+        }
+        let newIndex = selectedIndex;
+        if (e.key === 'ArrowUp') newIndex -= 9;
+        if (e.key === 'ArrowDown') newIndex += 9;
+        if (e.key === 'ArrowLeft') newIndex -= 1;
+        if (e.key === 'ArrowRight') newIndex += 1;
+
+        if (newIndex >= 0 && newIndex < 81) {
+          setSelectedIndex(newIndex);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedIndex, status, handleNumberInput, handleDelete]);
+
+  const handleSolve = () => {
+    if (confirm("Are you sure you want to give up?")) {
+      setUserGrid([...solution]);
+      setStatus('won'); // Technically won but cheated
+      clearGame();
+    }
+  };
+
+  const handleHint = () => {
+    if (selectedIndex === null) {
+      toast.error("Select a cell first!");
+      return;
+    }
+    if (initialGrid[selectedIndex] !== null) {
+      toast.error("This cell is already filled!");
+      return;
+    }
+
+    const newGrid = [...userGrid];
+    newGrid[selectedIndex] = solution[selectedIndex];
+    setUserGrid(newGrid);
+    toast.info("Hint revealed!");
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  if (!isClient) return null; // Prevent hydration mismatch
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="flex min-h-screen flex-col items-center p-4 md:p-8 bg-background text-foreground transition-colors">
+      <div className="w-full max-w-4xl flex justify-between items-center mb-8">
+        <h1 className="text-4xl font-bold tracking-tight">Sudoku</h1>
+        <div className="flex items-center gap-4">
+          <div className="text-xl font-mono font-medium">{formatTime(timer)}</div>
+          <ThemeToggle />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-8 w-full justify-center items-start">
+        <div className="flex flex-col items-center w-full max-w-md">
+          <SudokuGrid
+            puzzle={puzzle}
+            userGrid={userGrid}
+            initialGrid={initialGrid}
+            selectedIndex={selectedIndex}
+            onCellClick={handleCellClick}
+          />
+          <NumberPad onNumberClick={handleNumberInput} onDelete={handleDelete} />
         </div>
-      </main>
-    </div>
+
+        <div className="flex flex-col gap-8 w-full max-w-md">
+          <Controls
+            difficulty={difficulty}
+            onDifficultyChange={startNewGame}
+            onNewGame={() => startNewGame(difficulty)}
+            onSolve={handleSolve}
+            onHint={handleHint}
+            onReset={() => startNewGame(difficulty)}
+          />
+
+          <Button variant="outline" className="w-full h-12 gap-2" disabled>
+            <Camera className="w-4 h-4" />
+            Import from Camera (Coming Soon)
+          </Button>
+
+          <Leaderboard />
+        </div>
+      </div>
+    </main>
   );
 }
