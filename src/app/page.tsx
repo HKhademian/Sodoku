@@ -64,7 +64,7 @@ export default function Home() {
         status
       });
     }
-  }, [userGrid, timer, status, initialGrid, solution, difficulty, isClient]);
+  }, [userGrid, status, initialGrid, solution, difficulty, isClient]);
 
   const startNewGame = useCallback((diff: Difficulty) => {
     const { puzzle: newPuzzle, solution: newSolution } = generateSudoku(diff);
@@ -77,7 +77,7 @@ export default function Home() {
     setStatus('playing');
     setSelectedIndex(null);
     clearGame();
-  }, []);
+  }, [userGrid, initialGrid]);
 
   const handleImport = useCallback((importedGrid: (number | null)[]) => {
     const solved = solveSudoku(importedGrid);

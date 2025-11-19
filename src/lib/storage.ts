@@ -25,8 +25,13 @@ export const saveGame = (state: GameState) => {
 
 export const loadGame = (): GameState | null => {
     if (typeof window === 'undefined') return null;
-    const saved = localStorage.getItem(STORAGE_KEY_GAME);
-    return saved ? JSON.parse(saved) : null;
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY_GAME);
+        return saved ? JSON.parse(saved) : null;
+    } catch (error) {
+        console.error("Failed to load game save:", error);
+        return null;
+    }
 };
 
 export const clearGame = () => {
