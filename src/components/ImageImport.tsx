@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import Webcam from "react-webcam";
 import { Button } from "@/components/ui/button";
 import {
@@ -207,11 +208,30 @@ export function ImageImport({ onImport }: ImageImportProps) {
                         <div className="flex flex-col h-full gap-4">
                             <div className="relative flex-1 rounded-lg overflow-hidden bg-black flex items-center justify-center">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                    src={previewSrc}
-                                    alt="Preview"
-                                    className="max-w-full max-h-full object-contain"
-                                />
+                                <div className="relative aspect-square max-h-full max-w-full">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                        src={previewSrc}
+                                        alt="Preview"
+                                        className="w-full h-full object-contain"
+                                    />
+                                    <div className="absolute inset-0 grid grid-cols-9 grid-rows-[repeat(9,minmax(0,1fr))] pointer-events-none">
+                                        {Array.from({ length: 81 }).map((_, i) => {
+                                            const row = Math.floor(i / 9);
+                                            const col = i % 9;
+                                            return (
+                                                <div
+                                                    key={i}
+                                                    className={cn(
+                                                        "border-[0.5px] border-cyan-400/30",
+                                                        (col + 1) % 3 === 0 && col !== 8 && "border-r-cyan-400/80 border-r-2",
+                                                        (row + 1) % 3 === 0 && row !== 8 && "border-b-cyan-400/80 border-b-2"
+                                                    )}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             </div>
                             <div className="flex gap-2 shrink-0">
                                 <Button variant="outline" className="flex-1" onClick={() => setMode('crop')}>
