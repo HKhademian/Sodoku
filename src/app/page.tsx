@@ -168,6 +168,16 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedIndex, status, handleNumberInput, handleDelete]);
 
+  const resetGame = useCallback(() => {
+    if (confirm("Are you sure you want to reset the current puzzle?")) {
+      setUserGrid([...initialGrid]);
+      setTimer(0);
+      setStatus('playing');
+      setSelectedIndex(null);
+      toast.info("Puzzle reset.");
+    }
+  }, [initialGrid]);
+
   const handleSolve = () => {
     if (confirm("Are you sure you want to give up?")) {
       setUserGrid([...solution]);
@@ -229,7 +239,7 @@ export default function Home() {
             onNewGame={() => startNewGame(difficulty)}
             onSolve={handleSolve}
             onHint={handleHint}
-            onReset={() => startNewGame(difficulty)}
+            onReset={resetGame}
           />
 
           <ImageImport onImport={handleImport} />
