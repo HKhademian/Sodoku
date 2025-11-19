@@ -208,11 +208,58 @@ export default function Home() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const handleExport = () => {
+    const gameState = {
+      initialGrid,
+      userGrid,
+      solution,
+      timer,
+      difficulty,
+      status,
+    };
+    const blob = new Blob([JSON.stringify(gameState)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `sudoku-save-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportGame = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const gameState = JSON.parse(content);
+
+        // Basic validation
+        if (!gameState.initialGrid || !gameState.userGrid || !gameState.solution) {
+          throw new Error("Invalid save file");
+        }
+
+        setInitialGrid(gameState.initialGrid);
+        setUserGrid(gameState.userGrid);
+        setSolution(gameState.solution);
+        setTimer(gameState.timer || 0);
+        setDifficulty(gameState.difficulty || 'easy');
+        setStatus(gameState.status || 'playing');
+        toast.success("Game loaded successfully!");
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to load game save.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
   if (!isClient) return null; // Prevent hydration mismatch
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-4 md:p-8 bg-background text-foreground transition-colors">
-      <div className="w-full max-w-4xl flex justify-between items-center mb-8">
+    <div className="min-h-screen bg-background text-foreground flex flex-col items-center py-8 px-4">
+      <div className="w-full max-w-md flex justify-between items-center mb-8">
         <h1 className="text-4xl font-bold tracking-tight">Sudoku</h1>
         <div className="flex items-center gap-4">
           <div className="text-xl font-mono font-medium">{formatTime(timer)}</div>
@@ -221,6 +268,8 @@ export default function Home() {
             onNewGame={() => startNewGame(difficulty)}
             difficulty={difficulty}
             onDifficultyChange={setDifficulty}
+            onExport={handleExport}
+            onImportGame={handleImportGame}
           />
           <ThemeToggle />
         </div>
@@ -248,6 +297,6 @@ export default function Home() {
           <Leaderboard />
         </div>
       </div>
-    </main>
+    </div>
   );
 }

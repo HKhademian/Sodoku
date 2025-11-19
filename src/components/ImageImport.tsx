@@ -17,7 +17,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Difficulty } from "@/lib/sudoku";
-import { Camera, Upload, Loader2, Check, RotateCcw, Grid3X3, Menu, Play } from "lucide-react";
+import { Camera, Upload, Loader2, Check, RotateCcw, Grid3X3, Menu, Play, Download, FileJson } from "lucide-react";
 import { processSudokuImage } from "@/lib/ocr";
 import { getPerspectiveCroppedImg } from "@/lib/perspective";
 import { PerspectiveCropper } from "@/components/PerspectiveCropper";
@@ -30,9 +30,11 @@ interface ImageImportProps {
     onNewGame: () => void;
     difficulty: Difficulty;
     onDifficultyChange: (value: Difficulty) => void;
+    onExport: () => void;
+    onImportGame: (file: File) => void;
 }
 
-export function ImageImport({ onImport, onNewGame, difficulty, onDifficultyChange }: ImageImportProps) {
+export function ImageImport({ onImport, onNewGame, difficulty, onDifficultyChange, onExport, onImportGame }: ImageImportProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [mode, setMode] = useState<'menu' | 'camera' | 'crop' | 'preview' | 'manual'>('menu');
@@ -49,6 +51,7 @@ export function ImageImport({ onImport, onNewGame, difficulty, onDifficultyChang
 
     const webcamRef = useRef<Webcam>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const gameImportInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -217,6 +220,26 @@ export function ImageImport({ onImport, onNewGame, difficulty, onDifficultyChang
                                     <Grid3X3 className="w-12 h-12" />
                                     Manual Entry
                                 </Button>
+                                <Button variant="outline" className="h-32 flex-col gap-4" onClick={onExport}>
+                                    <Download className="w-12 h-12" />
+                                    Export Save
+                                </Button>
+                                <Button variant="outline" className="h-32 flex-col gap-4" onClick={() => gameImportInputRef.current?.click()}>
+                                    <FileJson className="w-12 h-12" />
+                                    Import Save
+                                </Button>
+                                <input
+                                    type="file"
+                                    ref={gameImportInputRef}
+                                    className="hidden"
+                                    accept=".json"
+                                    onChange={(e) => {
+                                        if (e.target.files?.[0]) {
+                                            onImportGame(e.target.files[0]);
+                                            setIsOpen(false);
+                                        }
+                                    }}
+                                />
                                 <input
                                     type="file"
                                     ref={fileInputRef}
