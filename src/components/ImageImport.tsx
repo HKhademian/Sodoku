@@ -28,6 +28,8 @@ export function ImageImport({ onImport }: ImageImportProps) {
     const [imageSrc, setImageSrc] = useState<string | null>(null);
     const [previewSrc, setPreviewSrc] = useState<string | null>(null);
     const [points, setPoints] = useState<any[]>([]);
+    const [previewGrid, setPreviewGrid] = useState<(number | null)[]>(Array(81).fill(null));
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
 
     // Manual mode state
     const [manualGrid, setManualGrid] = useState<(number | null)[]>(Array(81).fill(null));
@@ -63,6 +65,25 @@ export function ImageImport({ onImport }: ImageImportProps) {
             const url = URL.createObjectURL(croppedBlob);
             setPreviewSrc(url);
             setMode('preview');
+
+            // Start analysis immediately
+            setIsAnalyzing(true);
+            setPreviewGrid(Array(81).fill(null)); // Reset grid
+
+            const file = new File([croppedBlob], "cropped.jpg", { type: "image/jpeg" });
+            processSudokuImage(file)
+                .then(grid => {
+                    setPreviewGrid(grid);
+                    toast.success("Numbers detected!");
+                })
+                .catch(err => {
+                    console.error(err);
+                    toast.error("Failed to detect numbers.");
+                })
+                .finally(() => {
+                    setIsAnalyzing(false);
+                });
+
         } catch (error) {
             console.error(error);
             toast.error("Failed to generate preview.");
@@ -72,25 +93,10 @@ export function ImageImport({ onImport }: ImageImportProps) {
     const handleImport = async () => {
         if (!previewSrc) return;
 
-        setIsProcessing(true);
-        try {
-            // Convert blob URL back to blob/file
-            const response = await fetch(previewSrc);
-            const blob = await response.blob();
-            const file = new File([blob], "cropped.jpg", { type: "image/jpeg" });
-
-            toast.info("Processing Sudoku grid...");
-            const grid = await processSudokuImage(file);
-            onImport(grid);
-            setIsOpen(false);
-            resetState();
-            toast.success("Sudoku imported successfully!");
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to process image. Please try again.");
-        } finally {
-            setIsProcessing(false);
-        }
+        onImport(previewGrid);
+        setIsOpen(false);
+        resetState();
+        toast.success("Sudoku imported successfully!");
     };
 
     const handleManualInput = (num: number) => {
@@ -121,6 +127,8 @@ export function ImageImport({ onImport }: ImageImportProps) {
         setPoints([]);
         setManualGrid(Array(81).fill(null));
         setSelectedManualIndex(null);
+        setPreviewGrid(Array(81).fill(null));
+        setIsAnalyzing(false);
     };
 
     return (
@@ -219,18 +227,30 @@ export function ImageImport({ onImport }: ImageImportProps) {
                                         {Array.from({ length: 81 }).map((_, i) => {
                                             const row = Math.floor(i / 9);
                                             const col = i % 9;
+                                            const value = previewGrid[i];
                                             return (
                                                 <div
                                                     key={i}
                                                     className={cn(
+                                                        "flex items-center justify-center text-2xl font-bold text-blue-600 drop-shadow-md",
                                                         "border-[0.5px] border-cyan-400/30",
                                                         (col + 1) % 3 === 0 && col !== 8 && "border-r-cyan-400/80 border-r-2",
                                                         (row + 1) % 3 === 0 && row !== 8 && "border-b-cyan-400/80 border-b-2"
                                                     )}
-                                                />
+                                                >
+                                                    {value}
+                                                </div>
                                             );
                                         })}
                                     </div>
+                                    {isAnalyzing && (
+                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                            <div className="bg-background p-4 rounded-lg flex items-center gap-2">
+                                                <Loader2 className="w-6 h-6 animate-spin" />
+                                                <span>Scanning numbers...</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="flex gap-2 shrink-0">
