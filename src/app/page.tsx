@@ -220,7 +220,7 @@ export default function Home() {
             onImport={handleImport}
             onNewGame={() => startNewGame(difficulty)}
             difficulty={difficulty}
-            onDifficultyChange={startNewGame}
+            onDifficultyChange={setDifficulty}
           />
           <ThemeToggle />
         </div>
