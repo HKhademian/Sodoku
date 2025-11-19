@@ -21,8 +21,9 @@ interface ImageImportProps {
 export function ImageImport({ onImport }: ImageImportProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [mode, setMode] = useState<'menu' | 'camera' | 'crop'>('menu');
+    const [mode, setMode] = useState<'menu' | 'camera' | 'crop' | 'preview'>('menu');
     const [imageSrc, setImageSrc] = useState<string | null>(null);
+    const [previewSrc, setPreviewSrc] = useState<string | null>(null);
     const [points, setPoints] = useState<any[]>([]);
 
     const webcamRef = useRef<Webcam>(null);
@@ -47,13 +48,29 @@ export function ImageImport({ onImport }: ImageImportProps) {
         }
     }, [webcamRef]);
 
-    const handleProcessCrop = async () => {
+    const handlePreview = async () => {
         if (!imageSrc || points.length !== 4) return;
+
+        try {
+            const croppedBlob = await getPerspectiveCroppedImg(imageSrc, points);
+            const url = URL.createObjectURL(croppedBlob);
+            setPreviewSrc(url);
+            setMode('preview');
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to generate preview.");
+        }
+    };
+
+    const handleImport = async () => {
+        if (!previewSrc) return;
 
         setIsProcessing(true);
         try {
-            const croppedBlob = await getPerspectiveCroppedImg(imageSrc, points);
-            const file = new File([croppedBlob], "cropped.jpg", { type: "image/jpeg" });
+            // Convert blob URL back to blob/file
+            const response = await fetch(previewSrc);
+            const blob = await response.blob();
+            const file = new File([blob], "cropped.jpg", { type: "image/jpeg" });
 
             toast.info("Processing Sudoku grid...");
             const grid = await processSudokuImage(file);
@@ -72,6 +89,7 @@ export function ImageImport({ onImport }: ImageImportProps) {
     const resetState = () => {
         setMode('menu');
         setImageSrc(null);
+        setPreviewSrc(null);
         setPoints([]);
     };
 
@@ -145,11 +163,31 @@ export function ImageImport({ onImport }: ImageImportProps) {
                                         <RotateCcw className="w-4 h-4 mr-2" />
                                         Retake
                                     </Button>
-                                    <Button className="flex-1" onClick={handleProcessCrop}>
+                                    <Button className="flex-1" onClick={handlePreview}>
                                         <Check className="w-4 h-4 mr-2" />
-                                        Done
+                                        Preview
                                     </Button>
                                 </div>
+                            </div>
+                        </div>
+                    ) : mode === 'preview' && previewSrc ? (
+                        <div className="flex flex-col h-full gap-4">
+                            <div className="relative flex-1 rounded-lg overflow-hidden bg-black flex items-center justify-center">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                    src={previewSrc}
+                                    alt="Preview"
+                                    className="max-w-full max-h-full object-contain"
+                                />
+                            </div>
+                            <div className="flex gap-2 shrink-0">
+                                <Button variant="outline" className="flex-1" onClick={() => setMode('crop')}>
+                                    Back
+                                </Button>
+                                <Button className="flex-1" onClick={handleImport}>
+                                    <Check className="w-4 h-4 mr-2" />
+                                    Import
+                                </Button>
                             </div>
                         </div>
                     ) : null}
