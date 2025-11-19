@@ -40,7 +40,7 @@ export function SudokuGrid({ puzzle, userGrid, initialGrid, selectedIndex, onCel
     };
 
     return (
-        <div className="grid grid-cols-9 border-2 border-black dark:border-white w-full max-w-md aspect-square bg-background">
+        <div className="grid grid-cols-9 grid-rows-[repeat(9,minmax(0,1fr))] border-2 border-black dark:border-white w-full max-w-md aspect-square bg-background">
             {userGrid.map((value, index) => {
                 const row = Math.floor(index / 9);
                 const col = index % 9;
