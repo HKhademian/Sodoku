@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback } from "react";
 import Webcam from "react-webcam";
-import Cropper from "react-easy-crop";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -9,11 +8,11 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { Camera, Upload, Loader2, Check, X, RotateCcw } from "lucide-react";
+import { Camera, Upload, Loader2, Check, RotateCcw } from "lucide-react";
 import { processSudokuImage } from "@/lib/ocr";
-import { getCroppedImg } from "@/lib/cropImage";
+import { getPerspectiveCroppedImg } from "@/lib/perspective";
+import { PerspectiveCropper } from "@/components/PerspectiveCropper";
 import { toast } from "sonner";
-import { Slider } from "@/components/ui/slider";
 
 interface ImageImportProps {
     onImport: (grid: (number | null)[]) => void;
@@ -24,10 +23,8 @@ export function ImageImport({ onImport }: ImageImportProps) {
     const [isProcessing, setIsProcessing] = useState(false);
     const [mode, setMode] = useState<'menu' | 'camera' | 'crop'>('menu');
     const [imageSrc, setImageSrc] = useState<string | null>(null);
-    const [crop, setCrop] = useState({ x: 0, y: 0 });
-    const [zoom, setZoom] = useState(1);
-    const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
-    
+    const [points, setPoints] = useState<any[]>([]);
+
     const webcamRef = useRef<Webcam>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,18 +47,14 @@ export function ImageImport({ onImport }: ImageImportProps) {
         }
     }, [webcamRef]);
 
-    const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
-        setCroppedAreaPixels(croppedAreaPixels);
-    }, []);
-
     const handleProcessCrop = async () => {
-        if (!imageSrc || !croppedAreaPixels) return;
-        
+        if (!imageSrc || points.length !== 4) return;
+
         setIsProcessing(true);
         try {
-            const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+            const croppedBlob = await getPerspectiveCroppedImg(imageSrc, points);
             const file = new File([croppedBlob], "cropped.jpg", { type: "image/jpeg" });
-            
+
             toast.info("Processing Sudoku grid...");
             const grid = await processSudokuImage(file);
             onImport(grid);
@@ -79,8 +72,7 @@ export function ImageImport({ onImport }: ImageImportProps) {
     const resetState = () => {
         setMode('menu');
         setImageSrc(null);
-        setCrop({ x: 0, y: 0 });
-        setZoom(1);
+        setPoints([]);
     };
 
     return (
@@ -98,7 +90,7 @@ export function ImageImport({ onImport }: ImageImportProps) {
                 <DialogHeader>
                     <DialogTitle>Import Sudoku</DialogTitle>
                 </DialogHeader>
-                
+
                 <div className="flex-1 relative min-h-0 flex flex-col">
                     {isProcessing ? (
                         <div className="flex flex-col items-center justify-center h-full gap-4">
@@ -142,28 +134,12 @@ export function ImageImport({ onImport }: ImageImportProps) {
                     ) : mode === 'crop' && imageSrc ? (
                         <div className="flex flex-col h-full gap-4">
                             <div className="relative flex-1 rounded-lg overflow-hidden bg-black">
-                                <Cropper
-                                    image={imageSrc}
-                                    crop={crop}
-                                    zoom={zoom}
-                                    aspect={1}
-                                    onCropChange={setCrop}
-                                    onCropComplete={onCropComplete}
-                                    onZoomChange={setZoom}
+                                <PerspectiveCropper
+                                    imageSrc={imageSrc}
+                                    onPointsChange={setPoints}
                                 />
                             </div>
                             <div className="flex flex-col gap-4 shrink-0">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm w-12">Zoom</span>
-                                    <Slider
-                                        value={[zoom]}
-                                        min={1}
-                                        max={3}
-                                        step={0.1}
-                                        onValueChange={(value) => setZoom(value[0])}
-                                        className="flex-1"
-                                    />
-                                </div>
                                 <div className="flex gap-2">
                                     <Button variant="outline" className="flex-1" onClick={() => setMode('menu')}>
                                         <RotateCcw className="w-4 h-4 mr-2" />
