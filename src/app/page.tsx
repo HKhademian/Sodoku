@@ -36,7 +36,7 @@ export default function Home() {
       setTimer(saved.timer);
       setDifficulty(saved.difficulty as Difficulty);
       setStatus(saved.status);
-      toast.success("Game loaded from save!");
+      toast.success("Welcome back! Your game has been restored.");
     } else {
       startNewGame("medium");
     }
